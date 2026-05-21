@@ -315,6 +315,24 @@
     <div class="badge"><div class="dot"></div><span>POSITION SIZING ENGINE</span></div>
     <h1>FOREX CALCULATOR</h1>
     <p>Risk-managed sizing · All pairs + Gold</p>
+    <button id="inlineInstallBtn" onclick="triggerInstall()" style="
+      display:none; margin: 14px auto 0; align-items: center; gap: 9px;
+      background: linear-gradient(135deg, #22d3a5, #16a97f);
+      border: none; border-radius: 12px; padding: 13px 28px;
+      color: #000; font-family: var(--mono); font-size: 13px;
+      font-weight: 600; letter-spacing: 1.5px; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(34,211,165,.35);
+      transition: transform .15s, box-shadow .15s;
+    ">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      INSTALL APP
+    </button>
+    <div id="installedMsg" style="display:none; margin-top:12px; font-size:11px; color:var(--accent); letter-spacing:1px;">
+      ✓ APP INSTALLED
+    </div>
+    <div id="manualInstallHint" style="display:none; margin-top:12px; font-size:11px; color:var(--muted); line-height:1.6; text-align:center;">
+      Tap <strong style="color:var(--txt)">⋮</strong> in your browser →<br><strong style="color:var(--accent)">Add to Home Screen</strong>
+    </div>
   </div>
 
   <!-- Account Setup -->
@@ -756,22 +774,58 @@ document.getElementById("slPrice").addEventListener("input", e => {
 
 // ── PWA Install ──────────────────────────────────────────────────────────────
 let deferredPrompt;
+
+function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(choice => {
+      deferredPrompt = null;
+      if (choice.outcome === "accepted") {
+        document.getElementById("inlineInstallBtn").style.display = "none";
+        document.getElementById("installedMsg").style.display = "block";
+        document.getElementById("installBar").classList.remove("show");
+      }
+    });
+  } else {
+    // Fallback: show manual hint
+    document.getElementById("manualInstallHint").style.display = "block";
+    document.getElementById("inlineInstallBtn").style.display = "none";
+  }
+}
+
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   deferredPrompt = e;
-  const bar = document.getElementById("installBar");
-  bar.classList.add("show");
+  // Show inline button
+  const btn = document.getElementById("inlineInstallBtn");
+  btn.style.display = "flex";
+  // Also show bottom bar
+  document.getElementById("installBar").classList.add("show");
   document.querySelector(".wrap").style.paddingBottom = "90px";
 });
-document.getElementById("installBtn").addEventListener("click", () => {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(() => {
-      deferredPrompt = null;
-      document.getElementById("installBar").classList.remove("show");
-    });
-  }
+
+window.addEventListener("appinstalled", () => {
+  deferredPrompt = null;
+  document.getElementById("inlineInstallBtn").style.display = "none";
+  document.getElementById("installedMsg").style.display = "block";
+  document.getElementById("installBar").classList.remove("show");
 });
+
+document.getElementById("installBtn").addEventListener("click", triggerInstall);
+
+// Show manual hint if no install prompt fires (iOS / already installed)
+setTimeout(() => {
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if (isStandalone) {
+    document.getElementById("installedMsg").style.display = "block";
+  } else if (!deferredPrompt) {
+    document.getElementById("inlineInstallBtn").style.display = "flex";
+    document.getElementById("inlineInstallBtn").onclick = () => {
+      document.getElementById("manualInstallHint").style.display = "block";
+      document.getElementById("inlineInstallBtn").style.display = "none";
+    };
+  }
+}, 1500);
 
 // ── Service Worker (offline support) ─────────────────────────────────────────
 if ("serviceWorker" in navigator) {
